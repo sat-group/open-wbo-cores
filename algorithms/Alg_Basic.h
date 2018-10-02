@@ -31,7 +31,7 @@ protected:
   StatusCode linearsu();
 
   Solver *buildSATSolver(); // Rebuild MaxSAT solver.
-  void relaxFormula(vec<Lit> &cardinalityVariables); // Relaxes soft clauses.
+  void relaxFormula(); // Relaxes soft clauses.
 
 };
 } // namespace openwbo

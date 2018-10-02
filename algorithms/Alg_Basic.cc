@@ -25,15 +25,13 @@ StatusCode Basic::linearsu(){
   vec<Lit> cardinality_variables;
 
   /* TODO: relax the soft clauses. Note you can use/change the relaxFormula method */
-  relaxFormula(cardinality_variables);
+  relaxFormula();
 
   uint64_t cost = 0; // this will store the current bound we are exploring 
 
   /* TODO: initialize the SAT solver with the hard and soft clauses. Note you can 
            use/change the buildSATsolver method */
   Solver* sat_solver = buildSATSolver(); // replace NULL with the properly initialization
-  Encoder *encoder = new Encoder();
-  encoder->encodeCardinality(sat_solver, cardinality_variables, cost);
 
   std::map<Lit, int> core_mapping; // Mapping between the assumption literal and
                                   // the respective soft clause.
@@ -52,6 +50,9 @@ StatusCode Basic::linearsu(){
     /* TODO: push all the assumptions variables from soft clauses into the 
      * assumption vector. Each soft clause has one assumption variable in the member
      * 'assumption_var' */
+    for (int i = 0; i < maxsat_formula->nSoft(); i++) {
+      if (!active_soft[i]) assumptions.push(getSoftClause(i).assumption_var);
+    }
 
     // the SAT solver will return either l_False (unsatisfiable) or l_True (satisfiable)
     res = searchSATSolver(sat_solver, assumptions);
@@ -68,13 +69,23 @@ StatusCode Basic::linearsu(){
       /* How to extract a core from the SAT solver?
        * This is only useful for the MSU3 algorithm */
       for (int i = 0; i < sat_solver->conflict.size(); i++) {
+        // printf("%d\n", core_mapping[sat_solver->conflict[i]]);
         if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
           /* coreMapping[solver->conflict[i]]: 
            * - will contain the index of the soft clause that appears in the core
            * Use this information if you want to explore the unsat core!*/
+          int currIndex = core_mapping[sat_solver->conflict[i]];
+          // printf("%d \n", currIndex);
+          if (!active_soft[currIndex]) {
+            Soft &curr = getSoftClause(currIndex);
+            Lit card_var = curr.relaxation_vars[0];
+            cardinality_variables.push(card_var);
+            active_soft[currIndex] = true;
+          }
         }
       }
-
+      printf("%d", cardinality_variables.size());
+      // printf(", %lld \n", cost);
       /* The assumption vector should only contain assumptions variables from 
        * soft clauses that appeared in a core; this is only useful for the MSU3 
        * algorithm! */
@@ -86,8 +97,10 @@ StatusCode Basic::linearsu(){
 
       /* How to encode x_1 + ... + x_n <= k?
        * You can use the following code: */
-      Encoder *encoder = new Encoder();
-      encoder->encodeCardinality(sat_solver, cardinality_variables, cost);
+      if (cardinality_variables.size() > cost) {
+        Encoder *encoder = new Encoder();
+        encoder->encodeCardinality(sat_solver, cardinality_variables, cost);
+      }
 
       /* 'sat_solver': SAT solver should be build before 
        * 'cardinality_variables': should have the variables of the cardinality constraint
@@ -140,7 +153,7 @@ Solver* Basic::buildSATSolver() {
   return S;
 }
 
-void Basic::relaxFormula(vec<Lit> &cardinality_variables) {
+void Basic::relaxFormula() {
   /* We relax the formula by creating a literal r_i and adding it as a relaxation 
    * variable; we also add him as an assumption variable with \not r_i. This 
    * allows the solver to assume that all relaxation variables are initially set 
@@ -150,7 +163,6 @@ void Basic::relaxFormula(vec<Lit> &cardinality_variables) {
     Lit l = maxsat_formula->newLiteral();
     Soft &s = getSoftClause(i);
     s.relaxation_vars.push(l);
-    // s.assumption_var = ~l;
-    cardinality_variables.push(l);
+    s.assumption_var = ~l;
   }
 }
