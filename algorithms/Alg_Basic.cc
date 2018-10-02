@@ -21,16 +21,19 @@ StatusCode Basic::linearsu(){
 
   lbool res = l_False; // this will represent the output of the SAT solver
 
+  // This will store the variables in the cardinality constraint
+  vec<Lit> cardinality_variables;
+
   /* TODO: relax the soft clauses. Note you can use/change the relaxFormula method */
+  relaxFormula(cardinality_variables);
+
+  uint64_t cost = 0; // this will store the current bound we are exploring 
 
   /* TODO: initialize the SAT solver with the hard and soft clauses. Note you can 
            use/change the buildSATsolver method */
-  Solver* sat_solver = NULL; // replace NULL with the properly initialization
-
-  uint64_t cost = 0; // this will store the current bound we are exploring
-
-  // This will store the variables in the cardinality constraint
-  vec<Lit> cardinality_variables; 
+  Solver* sat_solver = buildSATSolver(); // replace NULL with the properly initialization
+  Encoder *encoder = new Encoder();
+  encoder->encodeCardinality(sat_solver, cardinality_variables, cost);
 
   std::map<Lit, int> core_mapping; // Mapping between the assumption literal and
                                   // the respective soft clause.
@@ -56,7 +59,8 @@ StatusCode Basic::linearsu(){
     if (res == l_True){
       // SAT solver returned satisfiable; What does this mean?
       // (*TODO*) fill the rest...
-
+      printf("%lld \n", cost);
+      return _OPTIMUM_;
     } else {
       // SAT solver returned unsatisfiable; What does this mean?
       // (*TODO*) fill the rest...
@@ -76,7 +80,9 @@ StatusCode Basic::linearsu(){
        * algorithm! */
 
       // Don't forget to rebuild the SAT solver and update the assumption vector!
-      sat_solver = NULL; // replace this with the correct initialization
+      cost++;
+      delete sat_solver;
+      sat_solver = buildSATSolver(); // replace this with the correct initialization
 
       /* How to encode x_1 + ... + x_n <= k?
        * You can use the following code: */
@@ -134,7 +140,7 @@ Solver* Basic::buildSATSolver() {
   return S;
 }
 
-void Basic::relaxFormula() {
+void Basic::relaxFormula(vec<Lit> &cardinality_variables) {
   /* We relax the formula by creating a literal r_i and adding it as a relaxation 
    * variable; we also add him as an assumption variable with \not r_i. This 
    * allows the solver to assume that all relaxation variables are initially set 
@@ -144,6 +150,7 @@ void Basic::relaxFormula() {
     Lit l = maxsat_formula->newLiteral();
     Soft &s = getSoftClause(i);
     s.relaxation_vars.push(l);
-    s.assumption_var = ~l;
+    // s.assumption_var = ~l;
+    cardinality_variables.push(l);
   }
 }
