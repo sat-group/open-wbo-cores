@@ -30,24 +30,16 @@ StatusCode Basic::linearsu(){
 
   /* TODO: initialize the SAT solver with the hard and soft clauses. Note you can 
            use/change the buildSATsolver method */
-  Solver* sat_solver = buildSATsolver();
+  
 
   uint64_t cost = maxsat_formula->nSoft(); // this will store the current bound we are exploring
 
   // This will store the variables in the cardinality constraint
   vec<Lit> cardinality_variables; 
   relaxFormula(cardinality_variables);
+  vec<Lit> assumptions;
 
-  std::map<Lit, int> core_mapping; // Mapping between the assumption literal and
-                                  // the respective soft clause.
-
-  // Soft clauses that are currently in the MaxSAT formula.
-  vec<bool> active_soft;
-
-  // Initialization of the data structures
-  active_soft.growTo(maxsat_formula->nSoft(), false);
-  for (int i = 0; i < maxsat_formula->nSoft(); i++)
-    core_mapping[getAssumptionLit(i)] = i;
+  Solver* sat_solver = buildSATSolver();
 
   for(;;){
 
@@ -56,23 +48,37 @@ StatusCode Basic::linearsu(){
 
     if (res == l_True){
       // SAT solver returned satisfiable; What does this mean?
+      //cost = dec(cost);
+      cost = computeCostModel(sat_solver->model);
       cost = dec(cost);
-      for (int i = 0; i < active_soft.size(); i++) {
-        if (solver.value(active_soft.at(i)) == l_True) cost = dec(cost);
-      }
+      // for (int i = 0; i < active_soft.size(); i++) {
+      //   if (solver.value(getSoftClause(i)) == l_True) cost = dec(cost);
+      // }
 
-    } else {
-      // SAT solver returned unsatisfiable; What does this mean?
-      // (*TODO*) fill the rest...
-
-      // Don't forget to rebuild the SAT solver and update the assumption vector!
       delete sat_solver;
       sat_solver = buildSATSolver();
 
       /* How to encode x_1 + ... + x_n <= k?
        * You can use the following code: */
       Encoder *encoder = new Encoder();
-      encoder->encodeCardinality(sat_solver, cardinality_variables, cost+1);
+      encoder->encodeCardinality(sat_solver, cardinality_variables, cost);
+
+       printf("c ub %llu\n",cost+1);
+
+    } else {
+      // SAT solver returned unsatisfiable; What does this mean?
+      // (*TODO*) fill the rest...
+
+      // Don't forget to rebuild the SAT solver and update the assumption vector!
+      // delete sat_solver;
+      // sat_solver = buildSATSolver();
+
+      //  How to encode x_1 + ... + x_n <= k?
+      //  * You can use the following code: 
+      // Encoder *encoder = new Encoder();
+      // encoder->encodeCardinality(sat_solver, cardinality_variables, cost+1);
+
+      printf("o %llu\n",cost+1);
 
       /* 'sat_solver': SAT solver should be build before 
        * 'cardinality_variables': should have the variables of the cardinality constraint
@@ -126,7 +132,7 @@ Solver* Basic::buildSATSolver() {
   return S;
 }
 
-void Basic::relaxFormula(vec<Lit> cardinality_variables) {
+void Basic::relaxFormula(vec<Lit> &cardinality_variables) {
   /* We relax the formula by creating a literal r_i and adding it as a relaxation 
    * variable; we also add him as an assumption variable with \not r_i. This 
    * allows the solver to assume that all relaxation variables are initially set 
@@ -136,7 +142,7 @@ void Basic::relaxFormula(vec<Lit> cardinality_variables) {
     Lit l = maxsat_formula->newLiteral();
     Soft &s = getSoftClause(i);
     s.relaxation_vars.push(l);
-    s.assumption_var = ~l;
-    cardinality_variables.push_back(l);
+    s.assumption_var = l;
+    cardinality_variables.push(l);
   }
 }
