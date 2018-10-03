@@ -42,7 +42,7 @@ StatusCode Basic::linearsu(){
   // Initialization of the data structures
   active_soft.growTo(maxsat_formula->nSoft(), false);
   for (int i = 0; i < maxsat_formula->nSoft(); i++)
-    core_mapping[getAssumptionLit(i)] = i;
+    core_mapping[~getAssumptionLit(i)] = i;
 
   for(;;){
 
@@ -60,7 +60,7 @@ StatusCode Basic::linearsu(){
     if (res == l_True){
       // SAT solver returned satisfiable; What does this mean?
       // (*TODO*) fill the rest...
-      printf("%lld \n", cost);
+      printf("o %lld \n", cost);
       return _OPTIMUM_;
     } else {
       // SAT solver returned unsatisfiable; What does this mean?
@@ -84,7 +84,7 @@ StatusCode Basic::linearsu(){
           }
         }
       }
-      printf("%d", cardinality_variables.size());
+      printf("c size of cardinality %d\n", cardinality_variables.size());
       // printf(", %lld \n", cost);
       /* The assumption vector should only contain assumptions variables from 
        * soft clauses that appeared in a core; this is only useful for the MSU3 
