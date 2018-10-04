@@ -58,7 +58,7 @@ StatusCode Basic::linearsu(){
     if (res == l_True){
       // SAT solver returned satisfiable; What does this mean?
       // (*TODO*) fill the rest...
-      printf("core sizes:\n");
+      printf("%d cores found:\n", cores.size());
       for (int i = 0; i < cores.size(); i++) {
         printf("%lu ", cores[i].size());
       }
@@ -71,12 +71,14 @@ StatusCode Basic::linearsu(){
       /* How to extract a core from the SAT solver?
        * This is only useful for the MSU3 algorithm */
       std::vector<Lit> curr;
+      printf("begin new core\n");
       for (int i = 0; i < sat_solver->conflict.size(); i++) {
         curr.push_back(sat_solver->conflict[i]);
         if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
           int softIndex = core_mapping[sat_solver->conflict[i]];
           Soft &soft = getSoftClause(softIndex);
           soft.assumption_var = soft.relaxation_vars[0];
+          printf("%s", printSoftClause(softIndex).c_str());
         } else {
           externalAssumptions.push(sat_solver->conflict[i]);
         }
