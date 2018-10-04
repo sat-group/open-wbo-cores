@@ -29,27 +29,40 @@ StatusCode Basic::linearsu(){
   Solver* sat_solver = buildSATSolver(); // replace NULL with the properly initialization
 
   std::vector<std::vector<Lit>> cores;
+  std::map<Lit, int> core_mapping; // Mapping between the assumption literal and
+                                  // the respective soft clause.
 
-  vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
-  /* TODO: push all the assumptions variables from soft clauses into the 
-   * assumption vector. Each soft clause has one assumption variable in the member
-   * 'assumption_var' */
-  std::map<Lit,int> assumpToSoft;
-  for (int i = 0; i < sat_solver->)
+  // Soft clauses that are currently in the MaxSAT formula.
+  vec<Lit> externalAssumptions;
+
+  // Initialization of the data structures
+  for (int i = 0; i < maxsat_formula->nSoft(); i++)
+    core_mapping[~getAssumptionLit(i)] = i;
 
   for(;;){
 
-    printf("yo\n");
+    vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
+    /* TODO: push all the assumptions variables from soft clauses into the 
+     * assumption vector. Each soft clause has one assumption variable in the member
+     * 'assumption_var' */
+    for (int i = 0; i < maxsat_formula->nSoft(); i++) {
+      assumptions.push(getSoftClause(i).assumption_var);
+    }
+    for (int i = 0; i < externalAssumptions.size(); i++) {
+      assumptions.push(externalAssumptions[i]);
+    }
+
     // the SAT solver will return either l_False (unsatisfiable) or l_True (satisfiable)
     res = searchSATSolver(sat_solver, assumptions);
 
     if (res == l_True){
       // SAT solver returned satisfiable; What does this mean?
       // (*TODO*) fill the rest...
+      printf("core sizes:\n");
       for (int i = 0; i < cores.size(); i++) {
         printf("%lu ", cores[i].size());
       }
-      printf("\n");
+      printf("\n# of non soft clause cores: %d\n", externalAssumptions.size());
       return _OPTIMUM_;
     } else {
       // SAT solver returned unsatisfiable; What does this mean?
@@ -59,10 +72,15 @@ StatusCode Basic::linearsu(){
        * This is only useful for the MSU3 algorithm */
       std::vector<Lit> curr;
       for (int i = 0; i < sat_solver->conflict.size(); i++) {
-        assumptions.push(sat_solver->conflict[i]);
         curr.push_back(sat_solver->conflict[i]);
+        if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
+          int softIndex = core_mapping[sat_solver->conflict[i]];
+          Soft &soft = getSoftClause(softIndex);
+          soft.assumption_var = soft.relaxation_vars[0];
+        } else {
+          externalAssumptions.push(sat_solver->conflict[i]);
+        }
       }
-      printf("hello %lu\n", curr.size());
       cores.push_back(curr);
       // printf(", %lld \n", cost);
       /* The assumption vector should only contain assumptions variables from 
@@ -72,6 +90,9 @@ StatusCode Basic::linearsu(){
       // Don't forget to rebuild the SAT solver and update the assumption vector!
       delete sat_solver;
       sat_solver = buildSATSolver(); // replace this with the correct initialization
+
+      /* How to encode x_1 + ... + x_n <= k?
+       * You can use the following code: */
 
       /* 'sat_solver': SAT solver should be build before 
        * 'cardinality_variables': should have the variables of the cardinality constraint
@@ -137,3 +158,4 @@ void Basic::relaxFormula() {
     s.assumption_var = ~l;
   }
 }
+
