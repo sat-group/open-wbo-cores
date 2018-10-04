@@ -28,15 +28,18 @@ StatusCode Basic::linearsu(){
            use/change the buildSATsolver method */
   Solver* sat_solver = buildSATSolver(); // replace NULL with the properly initialization
 
-  std::vec<vec<Lit>> cores;
+  std::vector<std::vector<Lit>> cores;
 
   vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
   /* TODO: push all the assumptions variables from soft clauses into the 
    * assumption vector. Each soft clause has one assumption variable in the member
    * 'assumption_var' */
+  std::map<Lit,int> assumpToSoft;
+  for (int i = 0; i < sat_solver->)
 
   for(;;){
 
+    printf("yo\n");
     // the SAT solver will return either l_False (unsatisfiable) or l_True (satisfiable)
     res = searchSATSolver(sat_solver, assumptions);
 
@@ -44,7 +47,7 @@ StatusCode Basic::linearsu(){
       // SAT solver returned satisfiable; What does this mean?
       // (*TODO*) fill the rest...
       for (int i = 0; i < cores.size(); i++) {
-        printf("%d ", cores[i].size());
+        printf("%lu ", cores[i].size());
       }
       printf("\n");
       return _OPTIMUM_;
@@ -54,10 +57,13 @@ StatusCode Basic::linearsu(){
 
       /* How to extract a core from the SAT solver?
        * This is only useful for the MSU3 algorithm */
-      cores.push(sat_solver->conflit);
+      std::vector<Lit> curr;
       for (int i = 0; i < sat_solver->conflict.size(); i++) {
         assumptions.push(sat_solver->conflict[i]);
+        curr.push_back(sat_solver->conflict[i]);
       }
+      printf("hello %lu\n", curr.size());
+      cores.push_back(curr);
       // printf(", %lld \n", cost);
       /* The assumption vector should only contain assumptions variables from 
        * soft clauses that appeared in a core; this is only useful for the MSU3 
