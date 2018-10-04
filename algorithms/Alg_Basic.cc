@@ -21,38 +21,21 @@ StatusCode Basic::linearsu(){
 
   lbool res = l_False; // this will represent the output of the SAT solver
 
-  // This will store the variables in the cardinality constraint
-  vec<Lit> cardinality_variables;
-
   /* TODO: relax the soft clauses. Note you can use/change the relaxFormula method */
   relaxFormula();
-
-  uint64_t cost = 0; // this will store the current bound we are exploring 
 
   /* TODO: initialize the SAT solver with the hard and soft clauses. Note you can 
            use/change the buildSATsolver method */
   Solver* sat_solver = buildSATSolver(); // replace NULL with the properly initialization
 
-  std::map<Lit, int> core_mapping; // Mapping between the assumption literal and
-                                  // the respective soft clause.
+  std::vec<vec<Lit>> cores;
 
-  // Soft clauses that are currently in the MaxSAT formula.
-  vec<bool> active_soft;
-
-  // Initialization of the data structures
-  active_soft.growTo(maxsat_formula->nSoft(), false);
-  for (int i = 0; i < maxsat_formula->nSoft(); i++)
-    core_mapping[~getAssumptionLit(i)] = i;
+  vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
+  /* TODO: push all the assumptions variables from soft clauses into the 
+   * assumption vector. Each soft clause has one assumption variable in the member
+   * 'assumption_var' */
 
   for(;;){
-
-    vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
-    /* TODO: push all the assumptions variables from soft clauses into the 
-     * assumption vector. Each soft clause has one assumption variable in the member
-     * 'assumption_var' */
-    for (int i = 0; i < maxsat_formula->nSoft(); i++) {
-      if (!active_soft[i]) assumptions.push(getSoftClause(i).assumption_var);
-    }
 
     // the SAT solver will return either l_False (unsatisfiable) or l_True (satisfiable)
     res = searchSATSolver(sat_solver, assumptions);
@@ -60,7 +43,10 @@ StatusCode Basic::linearsu(){
     if (res == l_True){
       // SAT solver returned satisfiable; What does this mean?
       // (*TODO*) fill the rest...
-      printf("o %lld \n", cost);
+      for (int i = 0; i < cores.size(); i++) {
+        printf("%d ", cores[i].size());
+      }
+      printf("\n");
       return _OPTIMUM_;
     } else {
       // SAT solver returned unsatisfiable; What does this mean?
@@ -68,39 +54,18 @@ StatusCode Basic::linearsu(){
 
       /* How to extract a core from the SAT solver?
        * This is only useful for the MSU3 algorithm */
+      cores.push(sat_solver->conflit);
       for (int i = 0; i < sat_solver->conflict.size(); i++) {
-        // printf("%d\n", core_mapping[sat_solver->conflict[i]]);
-        if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
-          /* coreMapping[solver->conflict[i]]: 
-           * - will contain the index of the soft clause that appears in the core
-           * Use this information if you want to explore the unsat core!*/
-          int currIndex = core_mapping[sat_solver->conflict[i]];
-          // printf("%d \n", currIndex);
-          if (!active_soft[currIndex]) {
-            Soft &curr = getSoftClause(currIndex);
-            Lit card_var = curr.relaxation_vars[0];
-            cardinality_variables.push(card_var);
-            active_soft[currIndex] = true;
-          }
-        }
+        assumptions.push(sat_solver->conflict[i]);
       }
-      printf("c size of cardinality %d\n", cardinality_variables.size());
       // printf(", %lld \n", cost);
       /* The assumption vector should only contain assumptions variables from 
        * soft clauses that appeared in a core; this is only useful for the MSU3 
        * algorithm! */
 
       // Don't forget to rebuild the SAT solver and update the assumption vector!
-      cost++;
       delete sat_solver;
       sat_solver = buildSATSolver(); // replace this with the correct initialization
-
-      /* How to encode x_1 + ... + x_n <= k?
-       * You can use the following code: */
-      if (cardinality_variables.size() > cost) {
-        Encoder *encoder = new Encoder();
-        encoder->encodeCardinality(sat_solver, cardinality_variables, cost);
-      }
 
       /* 'sat_solver': SAT solver should be build before 
        * 'cardinality_variables': should have the variables of the cardinality constraint
