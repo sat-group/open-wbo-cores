@@ -30,6 +30,7 @@ protected:
 
   StatusCode linearsu();
 
+  StatusCode MSU3_iterative(); // Incremental Iterative Encoding MSU3.
   Solver *buildSATSolver(); // Rebuild MaxSAT solver.
   void relaxFormula(); // Relaxes soft clauses.
 
