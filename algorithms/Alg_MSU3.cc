@@ -167,9 +167,6 @@ StatusCode MSU3::MSU3_iterative() {
         encoder.incUpdateCardinality(solver, currentObjFunction, lbCost,
                                      encodingAssumptions);
       }
-
-      for (int i = 0; i < encodingAssumptions.size(); i++)
-        assumptions.push(encodingAssumptions[i]);
     }
   }
   return _ERROR_;

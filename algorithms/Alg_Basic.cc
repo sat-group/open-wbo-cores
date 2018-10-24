@@ -105,8 +105,8 @@ StatusCode Basic::linearsu(){
 
             // Don't forget to rebuild the SAT solver and update the assumption vector!
             // cost++;
-            // delete sat_solver;
-            // sat_solver = buildSATSolver(); // replace this with the correct initialization
+            delete sat_solver;
+            sat_solver = buildSATSolver(); // replace this with the correct initialization
 
             /* How to encode x_1 + ... + x_n <= k?
              * You can use the following code: */
@@ -118,6 +118,7 @@ StatusCode Basic::linearsu(){
                 }
             } else {
                 if (new_cardinality_variables.size() > 0) {
+                    printf("%d %d\n", new_cardinality_variables.size(), sat_solver->nVars());                    
                     encoder.joinEncoding(sat_solver, new_cardinality_variables, cost);
                 }
                 encoder.incUpdateCardinality(sat_solver, cardinality_variables, cost, encodingAssumptions);
