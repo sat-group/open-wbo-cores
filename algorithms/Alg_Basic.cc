@@ -111,7 +111,7 @@ StatusCode Basic::linearsu(){
              * You can use the following code: */
             prevCores.push_back(curr_core);
             vec<Lit> fat_core;
-            for (uint64_t i = 0; i < cost; i++) {
+            for (uint64_t i = 0; i <= cost; i++) {
                 int curr_cost = i + 1;
                 vec<Lit> curr_core;
                 for (int j = 0; j < prevCores[i].size(); j++) {
