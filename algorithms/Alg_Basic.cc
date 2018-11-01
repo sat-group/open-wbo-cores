@@ -39,7 +39,6 @@ StatusCode Basic::linearsu(){
     vec<Lit> encodingAssumptions;
     vec<Lit> assumptions;
     std::vector<std::vector<Lit>> prevCores;
-    int num_card_vars = 0;
 
     // Initialization of the data structures
     active_soft.growTo(maxsat_formula->nSoft(), false);
@@ -48,11 +47,6 @@ StatusCode Basic::linearsu(){
 
     for(;;){
 
-        Encoder encoder;
-        encoder.setCardEncoding(_CARD_TOTALIZER_);
-        encoder.setIncremental(_INCREMENTAL_ITERATIVE_);
-
-        std::vector<Lit> curr_core;
         vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
         /* TODO: push all the assumptions variables from soft clauses into the 
          * assumption vector. Each soft clause has one assumption variable in the member
@@ -74,29 +68,6 @@ StatusCode Basic::linearsu(){
             printf("o %lld \n", cost);
             return _OPTIMUM_;
         } else {
-            // SAT solver returned unsatisfiable; What does this mean?
-            // (*TODO*) fill the rest...
-
-            /* How to extract a core from the SAT solver?
-             * This is only useful for the MSU3 algorithm */
-            for (int i = 0; i < sat_solver->conflict.size(); i++) {
-                // printf("%d\n", core_mapping[sat_solver->conflict[i]]);
-                if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
-                    /* coreMapping[solver->conflict[i]]: 
-                     * - will contain the index of the soft clause that appears in the core
-                     * Use this information if you want to explore the unsat core!*/
-                    int currIndex = core_mapping[sat_solver->conflict[i]];
-                    // printf("%d \n", currIndex);
-                    if (!active_soft[currIndex]) {
-                        Soft &curr = getSoftClause(currIndex);
-                        Lit card_var = curr.relaxation_vars[0];
-                        curr_core.push_back(card_var);
-                        num_card_vars++;
-                        active_soft[currIndex] = true;
-                    }
-                }
-            }
-            printf("c size of cardinality %d\n", num_card_vars);
             // printf(", %lld \n", cost);
             /* The assumption vector should only contain assumptions variables from 
              * soft clauses that appeared in a core; this is only useful for the MSU3 
@@ -109,7 +80,6 @@ StatusCode Basic::linearsu(){
 
             /* How to encode x_1 + ... + x_n <= k?
              * You can use the following code: */
-            prevCores.push_back(curr_core);
             vec<Lit> fat_core;
             for (uint64_t i = 0; i < cost; i++) {
                 int curr_cost = i + 1;
