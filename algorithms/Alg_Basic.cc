@@ -21,10 +21,6 @@ StatusCode Basic::linearsu(){
 
     lbool res = l_False; // this will represent the output of the SAT solver
 
-    // This will store the variables in the cardinality constraint
-    vec<Lit> new_cardinality_variables;
-    vec<Lit> cardinality_variables;
-
     /* TODO: relax the soft clauses. Note you can use/change the relaxFormula method */
     relaxFormula();
 
@@ -42,9 +38,8 @@ StatusCode Basic::linearsu(){
 
     vec<Lit> encodingAssumptions;
     vec<Lit> assumptions;
-    Encoder encoder;
-    encoder.setCardEncoding(_CARD_TOTALIZER_);
-    encoder.setIncremental(_INCREMENTAL_ITERATIVE_);
+    std::vector<std::vector<Lit>> prevCores;
+    int num_card_vars = 0;
 
     // Initialization of the data structures
     active_soft.growTo(maxsat_formula->nSoft(), false);
@@ -53,6 +48,11 @@ StatusCode Basic::linearsu(){
 
     for(;;){
 
+        Encoder encoder;
+        encoder.setCardEncoding(_CARD_TOTALIZER_);
+        encoder.setIncremental(_INCREMENTAL_ITERATIVE_);
+
+        std::vector<Lit> curr_core;
         vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
         /* TODO: push all the assumptions variables from soft clauses into the 
          * assumption vector. Each soft clause has one assumption variable in the member
@@ -79,7 +79,6 @@ StatusCode Basic::linearsu(){
 
             /* How to extract a core from the SAT solver?
              * This is only useful for the MSU3 algorithm */
-            new_cardinality_variables.clear();
             for (int i = 0; i < sat_solver->conflict.size(); i++) {
                 // printf("%d\n", core_mapping[sat_solver->conflict[i]]);
                 if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
@@ -91,13 +90,13 @@ StatusCode Basic::linearsu(){
                     if (!active_soft[currIndex]) {
                         Soft &curr = getSoftClause(currIndex);
                         Lit card_var = curr.relaxation_vars[0];
-                        cardinality_variables.push(card_var);
-                        new_cardinality_variables.push(card_var);
+                        curr_core.push_back(card_var);
+                        num_card_vars++;
                         active_soft[currIndex] = true;
                     }
                 }
             }
-            printf("c size of cardinality %d\n", cardinality_variables.size());
+            printf("c size of cardinality %d\n", num_card_vars);
             // printf(", %lld \n", cost);
             /* The assumption vector should only contain assumptions variables from 
              * soft clauses that appeared in a core; this is only useful for the MSU3 
@@ -110,19 +109,29 @@ StatusCode Basic::linearsu(){
 
             /* How to encode x_1 + ... + x_n <= k?
              * You can use the following code: */
+            prevCores.push_back(curr_core);
+            vec<Lit> fat_core;
+            for (uint64_t i = 0; i < cost; i++) {
+                int curr_cost = i + 1;
+                vec<Lit> curr_core;
+                for (int j = 0; j < prevCores[i].size(); j++) {
+                    fat_core.push(prevCores[i][j]);
+                    curr_core.push(prevCores[i][j]);
+                }
+                if (!encoder.hasCardEncoding()) {
+                    if (fat_core.size() > curr_cost) {
+                        encoder.buildCardinality(sat_solver, fat_core, curr_cost);
+                        encoder.incUpdateCardinality(sat_solver, fat_core, curr_cost, encodingAssumptions);
+                    }
+                } else {
+                    if (curr_core.size() > 0) {
+                        encoder.joinEncoding(sat_solver, curr_core, curr_cost);
+                    }
+                    encoder.incUpdateCardinality(sat_solver, fat_core, curr_cost, encodingAssumptions);
+                }
+            }
+
             cost++;
-            if (!encoder.hasCardEncoding()) {
-                if (cardinality_variables.size() > cost) {
-                    encoder.buildCardinality(sat_solver, cardinality_variables, cost);
-                    encoder.incUpdateCardinality(sat_solver, cardinality_variables, cost, encodingAssumptions);
-                }
-            } else {
-                if (new_cardinality_variables.size() > 0) {
-                    printf("%d %d\n", new_cardinality_variables.size(), sat_solver->nVars());                    
-                    encoder.joinEncoding(sat_solver, new_cardinality_variables, cost);
-                }
-                encoder.incUpdateCardinality(sat_solver, cardinality_variables, cost, encodingAssumptions);
-           }
 
             /* 'sat_solver': SAT solver should be build before 
              * 'cardinality_variables': should have the variables of the cardinality constraint
