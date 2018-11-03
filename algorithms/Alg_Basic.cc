@@ -1,3 +1,8 @@
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <vector>
+
 #include "Alg_Basic.h"
 
 using namespace openwbo;
@@ -6,6 +11,15 @@ StatusCode Basic::search() {
     // Here you can control which algorithm is being used!
     // It if useful if you implement both linearsu and the MSU3 versions.
     return linearsu();
+}
+
+std::vector<int> read_ints(std::string filename) {
+    std::vector<int> retval{};
+    std::ifstream ifs(filename, std::ios::in | std::ifstream::binary);
+    std::istream_iterator<int> iter{ifs};
+    std::istream_iterator<int> end{};
+    std::copy(iter, end, std::back_inserter(retval));
+    return retval;
 }
 
 StatusCode Basic::linearsu(){
@@ -38,7 +52,22 @@ StatusCode Basic::linearsu(){
 
     vec<Lit> encodingAssumptions;
     vec<Lit> assumptions;
-    std::vector<std::vector<Lit>> prevCores;
+    std::string coresFile("cores");
+    std::string lengthsFile("lengths");
+    std::vector<int> lengths = read_ints(lengthsFile);
+    std::vector<int> cores = read_ints(coresFile);
+    std::vector<std::vector<Lit>> prevCores{};
+    int currIdx = 0;
+    for (int i = 0; i < lengths.size(); i++) {
+        std::vector<Lit> currRow{};
+        for (int j = 0; j < lengths[i]; j++) {
+            Soft &curr = getSoftClause(cores[currIdx]);
+            Lit card_var = curr.relaxation_vars[0];
+            currRow.push_back(card_var);
+            currIdx++;
+        }
+        prevCores.push_back(currRow);
+    }
 
     // Initialization of the data structures
     active_soft.growTo(maxsat_formula->nSoft(), false);
@@ -46,6 +75,10 @@ StatusCode Basic::linearsu(){
         core_mapping[~getAssumptionLit(i)] = i;
 
     for(;;){
+
+        Encoder encoder;
+        encoder.setCardEncoding(_CARD_TOTALIZER_);
+        encoder.setIncremental(_INCREMENTAL_ITERATIVE_);
 
         vec<Lit> assumptions; // You only need assumptions for the MSU3 algorithm!
         /* TODO: push all the assumptions variables from soft clauses into the 
@@ -81,7 +114,7 @@ StatusCode Basic::linearsu(){
             /* How to encode x_1 + ... + x_n <= k?
              * You can use the following code: */
             vec<Lit> fat_core;
-            for (uint64_t i = 0; i < cost; i++) {
+            for (uint64_t i = 0; i <= cost; i++) {
                 int curr_cost = i + 1;
                 vec<Lit> curr_core;
                 for (int j = 0; j < prevCores[i].size(); j++) {
@@ -100,7 +133,7 @@ StatusCode Basic::linearsu(){
                     encoder.incUpdateCardinality(sat_solver, fat_core, curr_cost, encodingAssumptions);
                 }
             }
-
+            printf("c size of cardinality %d", fat_core.size());
             cost++;
 
             /* 'sat_solver': SAT solver should be build before 
