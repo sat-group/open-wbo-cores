@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <vector>
 #include "Alg_Basic.h"
 
 using namespace openwbo;
@@ -6,6 +10,13 @@ StatusCode Basic::search() {
     // Here you can control which algorithm is being used!
     // It if useful if you implement both linearsu and the MSU3 versions.
     return linearsu();
+}
+
+void write_vector_to_file(const std::vector<int>& myVector, std::string filename)
+{
+    std::ofstream ofs(filename, std::ios::out | std::ofstream::binary);
+    std::ostream_iterator<int> osi{ofs," "};
+    std::copy(myVector.begin(), myVector.end(), osi);
 }
 
 StatusCode Basic::linearsu(){
@@ -48,6 +59,12 @@ StatusCode Basic::linearsu(){
 
     // Initialization of the data structures
     active_soft.growTo(maxsat_formula->nSoft(), false);
+
+    std::vector<int> lengths{};
+    std::vector<int> cores{};
+    std::string lengthsFile("lengths");
+    std::string coresFile("cores");
+
     for (int i = 0; i < maxsat_formula->nSoft(); i++)
         core_mapping[~getAssumptionLit(i)] = i;
 
@@ -72,6 +89,8 @@ StatusCode Basic::linearsu(){
             // SAT solver returned satisfiable; What does this mean?
             // (*TODO*) fill the rest...
             printf("o %lld \n", cost);
+            write_vector_to_file(cores,coresFile);
+            write_vector_to_file(lengths,lengthsFile);
             return _OPTIMUM_;
         } else {
             // SAT solver returned unsatisfiable; What does this mean?
@@ -89,6 +108,7 @@ StatusCode Basic::linearsu(){
                     int currIndex = core_mapping[sat_solver->conflict[i]];
                     // printf("%d \n", currIndex);
                     if (!active_soft[currIndex]) {
+                        cores.push_back(currIndex);
                         Soft &curr = getSoftClause(currIndex);
                         Lit card_var = curr.relaxation_vars[0];
                         cardinality_variables.push(card_var);
@@ -97,6 +117,7 @@ StatusCode Basic::linearsu(){
                     }
                 }
             }
+            lengths.push_back(new_cardinality_variables.size());
             printf("c size of cardinality %d\n", cardinality_variables.size());
             // printf(", %lld \n", cost);
             /* The assumption vector should only contain assumptions variables from 
