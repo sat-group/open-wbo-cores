@@ -52,6 +52,7 @@ StatusCode Basic::linearsu(){
 
     vec<Lit> encodingAssumptions;
     vec<Lit> assumptions;
+
     std::string coresFile("cores");
     std::string lengthsFile("lengths");
     std::vector<int> lengths = read_ints(lengthsFile);
@@ -114,12 +115,16 @@ StatusCode Basic::linearsu(){
             /* How to encode x_1 + ... + x_n <= k?
              * You can use the following code: */
             vec<Lit> fat_core;
+            printf("Cost: %lu\n", cost);
+            int currIdx = 0;
             for (uint64_t i = 0; i <= cost; i++) {
-                int curr_cost = i + 1;
+                uint64_t curr_cost = i + 1;
                 vec<Lit> curr_core;
                 for (int j = 0; j < prevCores[i].size(); j++) {
                     fat_core.push(prevCores[i][j]);
                     curr_core.push(prevCores[i][j]);
+                    active_soft[cores[currIdx]] = true; 
+                    currIdx++;
                 }
                 if (!encoder.hasCardEncoding()) {
                     if (fat_core.size() > curr_cost) {
@@ -133,7 +138,7 @@ StatusCode Basic::linearsu(){
                     encoder.incUpdateCardinality(sat_solver, fat_core, curr_cost, encodingAssumptions);
                 }
             }
-            printf("c size of cardinality %d", fat_core.size());
+            printf("c size of cardinality %d\n", fat_core.size());
             cost++;
 
             /* 'sat_solver': SAT solver should be build before 
