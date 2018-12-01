@@ -1,3 +1,9 @@
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <vector>
+
+
 #include "Alg_Basic.h"
 
 using namespace openwbo;
@@ -6,6 +12,15 @@ StatusCode Basic::search() {
   // Here you can control which algorithm is being used!
   // It if useful if you implement both linearsu and the MSU3 versions.
   return linearsu();
+}
+
+std::vector<int> read_ints(std::string filename) {
+    std::vector<int> retval{};
+    std::ifstream ifs(filename, std::ios::in | std::ifstream::binary);
+    std::istream_iterator<int> iter{ifs};
+    std::istream_iterator<int> end{};
+    std::copy(iter, end, std::back_inserter(retval));
+    return retval;
 }
 
 StatusCode Basic::linearsu(){
@@ -39,6 +54,11 @@ StatusCode Basic::linearsu(){
   // Soft clauses that are currently in the MaxSAT formula.
   vec<bool> active_soft;
 
+  std::vector<int> lengths = read_ints("lengths");
+  std::vector<int> cores = read_ints("cores");
+  int currLengthIdx = 0;
+  int currCoreIdx = 0;
+
   // Initialization of the data structures
   active_soft.growTo(maxsat_formula->nSoft(), false);
   for (int i = 0; i < maxsat_formula->nSoft(); i++)
@@ -66,24 +86,19 @@ StatusCode Basic::linearsu(){
       // SAT solver returned unsatisfiable; What does this mean?
       // (*TODO*) fill the rest...
 
-      /* How to extract a core from the SAT solver?
-       * This is only useful for the MSU3 algorithm */
-      for (int i = 0; i < sat_solver->conflict.size(); i++) {
-        // printf("%d\n", core_mapping[sat_solver->conflict[i]]);
-        if (core_mapping.find(sat_solver->conflict[i]) != core_mapping.end()) {
-          /* coreMapping[solver->conflict[i]]: 
-           * - will contain the index of the soft clause that appears in the core
-           * Use this information if you want to explore the unsat core!*/
-          int currIndex = core_mapping[sat_solver->conflict[i]];
-          // printf("%d \n", currIndex);
+      int currLength = lengths[currLengthIdx];
+      currLengthIdx++;
+      for (int i = 0; i < currLength; i++) {
+          int currIndex = cores[currCoreIdx+i];
           if (!active_soft[currIndex]) {
             Soft &curr = getSoftClause(currIndex);
             Lit card_var = curr.relaxation_vars[0];
             cardinality_variables.push(card_var);
             active_soft[currIndex] = true;
           }
-        }
       }
+      currCoreIdx += currLength;
+
       printf("c size of cardinality %d\n", cardinality_variables.size());
       // printf(", %lld \n", cost);
       /* The assumption vector should only contain assumptions variables from 
